@@ -1,0 +1,26 @@
+{
+  "name": "binance-futures-analysis-backend",
+  "version": "1.0.0",
+  "description": "Backend for Binance Futures Analysis",
+  "main": "src/index.ts",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node-dev --respawn --transpile-only src/index.ts"
+  },
+  "dependencies": {
+    "@fastify/cors": "^10.0.1",
+    "axios": "^1.4.0",
+    "ccxt": "^4.4.25",
+    "fastify": "^5.1.0",
+    "pg": "^8.11.0"
+  },
+  "devDependencies": {
+    "@types/fastify-cors": "^0.1.0",
+    "@types/node": "^20.2.5",
+    "@types/pg": "^8.10.1",
+    "ts-node": "^10.9.1",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.0.4"
+  }
+}
