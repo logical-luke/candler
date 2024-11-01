@@ -1,4 +1,4 @@
-interface Candle {
+export interface Candle {
   timestamp: number;
   open: number;
   high: number;
@@ -7,12 +7,14 @@ interface Candle {
   volume: number;
 }
 
-interface Indicator {
+export interface Indicator {
   timestamp: number;
-  sma: number;
-  ema: number;
-  rsi: number;
+  sma: number | null;
+  ema: number | null;
+  rsi: number | null;
 }
+
+export const INDICATOR_KEYS = ['sma', 'ema', 'rsi'];
 
 export function computeIndicators(candles: Candle[]): Indicator[] {
   const sma = computeSMA(candles, 14);

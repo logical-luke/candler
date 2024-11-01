@@ -12,18 +12,18 @@ services:
     networks:
       - app-network
 
-  mindsdb:
-    image: mindsdb/mindsdb:latest
-    environment:
-      MINDSDB_DB_USER: mindsdb
-      MINDSDB_DB_PASS: password
-    ports:
-      - "47334:47334"
-      - "47335:47335"
-    volumes:
-      - mindsdb_data:/root/mindsdb_storage
-    networks:
-      - app-network
+#  mindsdb:
+#    image: mindsdb/mindsdb:latest
+#    environment:
+#      MINDSDB_DB_USER: mindsdb
+#      MINDSDB_DB_PASS: password
+#    ports:
+#      - "47334:47334"
+#      - "47335:47335"
+#    volumes:
+#      - mindsdb_data:/root/mindsdb_storage
+#    networks:
+#      - app-network
 
   backend:
     build:
@@ -33,7 +33,7 @@ services:
       - "3000:3000"
     depends_on:
       - timescaledb
-      - mindsdb
+#      - mindsdb
     environment:
       DATABASE_URL: postgres://admin:password@timescaledb:5432/binance_futures
       MINDSDB_URL: http://mindsdb:47334
@@ -61,7 +61,7 @@ services:
 
 volumes:
   timescaledb_data:
-  mindsdb_data:
+#  mindsdb_data:
 
 networks:
   app-network:

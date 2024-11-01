@@ -1,11 +1,28 @@
 import fastify, { FastifyInstance, RouteHandlerMethod } from 'fastify';
 import cors from '@fastify/cors';
-import { fillMissingData, isDataFillingInProgress, getLatestCandlestick, getImportStatus } from './service/binanceDataService';
+import {
+  fillMissingData,
+  isDataFillingInProgress,
+  getLatestCandlestick,
+  getImportStatus,
+  fillMissingIndicators,
+  getLatestCandlestickWithIndicators,
+  getCandlesticks,
+  updateLatestCandlesticks
+} from './service/binanceDataService';
 import { initDatabase } from './utils/dbInit';
 
-const server: FastifyInstance = fastify({ logger: true });
+const server: FastifyInstance = fastify({
+  logger: true,
+  ajv: {
+    customOptions: {
+      removeAdditional: "all",
+      coerceTypes: true,
+      useDefaults: true,
+    }
+  }
+});
 
-// Register the CORS plugin with a more permissive configuration
 server.register(cors, {
   origin: '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -13,16 +30,28 @@ server.register(cors, {
   credentials: true,
 });
 
-// Keep track of routes
+// Force JSON content type for all responses
+server.addHook('onSend', (request, reply, payload, done) => {
+  reply.header('Content-Type', 'application/json');
+  done();
+});
+
+// Error handler to ensure JSON responses even for errors
+server.setErrorHandler((error, request, reply) => {
+  reply.status(error.statusCode || 500).send({
+    error: error.name,
+    message: error.message,
+    statusCode: error.statusCode || 500
+  });
+});
+
 const routes: Array<{method: string, url: string}> = [];
 
-// Helper function to add routes
 function addRoute(method: 'get' | 'post' | 'put' | 'delete' | 'patch' | 'options', url: string, handler: RouteHandlerMethod) {
   routes.push({method, url});
   server[method](url, handler);
 }
 
-// Add routes
 addRoute('get', '/status', async (request, reply) => {
   try {
     return {
@@ -31,37 +60,56 @@ addRoute('get', '/status', async (request, reply) => {
     };
   } catch (error) {
     console.error('Error in /status endpoint:', error);
-    reply.status(500).send({ error: 'Internal Server Error', details: (error as Error).message });
+    throw error;
   }
 });
 
 addRoute('get', '/latest-candlestick', async (request, reply) => {
   const { symbol, timeframe } = request.query as { symbol: string; timeframe: string };
-  const latestCandlestick = await getLatestCandlestick(symbol, timeframe);
+  const latestCandlestick = await getLatestCandlestickWithIndicators(symbol, timeframe);
   if (latestCandlestick) {
-    return latestCandlestick;
+    return { data: latestCandlestick };
   } else {
-    reply.status(404).send({ error: 'Latest candlestick not found' });
+    reply.status(404);
+    return { error: 'Latest candlestick not found', data: null };
   }
 });
 
-server.addHook('onRequest', async (request, reply) => {
-  if (isDataFillingInProgress() && request.url !== '/status') {
-    reply.status(503).send({ error: 'Data is being filled. Please try again later.' });
+addRoute('get', '/candlesticks', async (request, reply) => {
+  const { symbol, timeframe, limit, startTime, endTime } = request.query as { symbol: string; timeframe: string; limit?: string; startTime?: string; endTime?: string };
+  const candlesticks = await getCandlesticks(symbol, timeframe, parseInt(limit || '1000'), startTime ? parseInt(startTime) : undefined, endTime ? parseInt(endTime) : undefined);
+
+  if (candlesticks.length === 0) {
+    return { message: 'No candlesticks found for the given parameters', data: [] };
   }
+
+  return { data: candlesticks };
 });
+
+const UPDATE_INTERVAL = 60000; // 1 minute
+
+async function continuousUpdate() {
+  while (true) {
+    try {
+      await updateLatestCandlesticks();
+      await fillMissingData();
+      await fillMissingIndicators();
+    } catch (error) {
+      console.error('Error in continuous update:', error);
+    }
+    await new Promise(resolve => setTimeout(resolve, UPDATE_INTERVAL));
+  }
+}
 
 const start = async () => {
   try {
     await server.listen({ port: 3000, host: '0.0.0.0' });
     console.log('Initializing database...');
     await initDatabase();
-    console.log('Database initialized. Starting to fill missing data...');
-    await fillMissingData();
-    console.log('Data filled. Starting server...');
+    console.log('Database initialized. Starting continuous updates...');
+    continuousUpdate();
+    console.log('Server is ready.');
 
-
-    console.log('Server started successfully');
     console.log('Routes:');
     routes.forEach(route => {
       console.log(`${route.method.toUpperCase()} ${route.url}`);
