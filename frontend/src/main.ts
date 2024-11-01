@@ -5,9 +5,11 @@ import "primeicons/primeicons.css";
 import PrimeVue from "primevue/config";
 import Lara from '@primevue/themes/lara';
 import Tooltip from 'primevue/tooltip';
-
+import {createPinia} from "pinia";
+const pinia = createPinia()
 const app = createApp(App);
 
+app.use(pinia);
 app.use(PrimeVue, {
     theme: {
         preset: Lara,
@@ -22,5 +24,4 @@ app.use(PrimeVue, {
 });
 
 app.directive('tooltip', Tooltip);
-
 app.mount('#app');

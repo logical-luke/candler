@@ -1,20 +1,11 @@
 <template>
   <div
-      class="relative w-full h-[800px] bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+      class="bg-white w-full dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
     <div
-        class="absolute top-0 left-0 right-0 z-10 bg-white dark:bg-gray-800 p-4 flex gap-2 flex-wrap items-center justify-between border-b border-gray-200 dark:border-gray-700">
-      <div class="flex items-center space-x-4 mb-2 sm:mb-0">
-        <i class="pi pi-clock text-gray-500 dark:text-gray-400"></i>
-        <span class="text-sm font-medium text-gray-500 dark:text-gray-400">Interval:</span>
-        <SelectButton v-model="selectedInterval" :options="intervals"
-                      @change="$emit('interval-change', selectedInterval.value)" optionLabel="label"
-                      class="border border-gray-300 dark:border-gray-600"/>
-      </div>
-      <div class="flex items-center space-x-4 mb-2 sm:mb-0">
-        <i class="pi pi-calendar text-gray-500 dark:text-gray-400"></i>
-        <span class="text-sm font-medium text-gray-500 dark:text-gray-400">Range:</span>
-        <SelectButton v-model="selectedRange" :options="rangeOptions" @change="handleRangeChange" optionLabel="label"
-                      class="border border-gray-300 dark:border-gray-600"/>
+        class="bg-white dark:bg-gray-800 p-4 flex justify-between border-b border-gray-200 dark:border-gray-700">
+      <div class="flex flex-col gap-4">
+        <IntervalSelector/>
+        <RangeSelector/>
       </div>
       <div class="flex items-center space-x-4">
         <Button :icon="isDataFilling ? 'pi pi-spin pi-spinner' : 'pi pi-check'"
@@ -24,7 +15,7 @@
         <ThemeToggle @theme-changed="updateChartTheme"/>
       </div>
     </div>
-    <div ref="chartContainer" class="w-full h-full pt-20">
+    <div ref="chartContainer" class="w-full h-5/6">
       <div v-if="!formattedData.length" class="flex items-center justify-center h-full">
         <div class="text-center text-gray-500 dark:text-gray-400">
           <i class="pi pi-chart-bar text-4xl mb-2"></i>
@@ -46,10 +37,15 @@ import {
   ColorType,
   type Time
 } from 'lightweight-charts';
-import SelectButton from 'primevue/selectbutton';
 import Button from 'primevue/button';
-import DatePicker from 'primevue/datepicker';
 import ThemeToggle from "./ThemeToggle.vue";
+import RangeSelector from "./RangeSelector.vue";
+import IntervalSelector from "./IntervalSelector.vue";
+import {useChartStore} from "@/stores/chart";
+import {ChartDataProvider} from "@/services/ChartDataProvider";
+
+const chartStore = useChartStore();
+const chartDataProvider = new ChartDataProvider();
 
 interface ImportStatus {
   symbol: string;
@@ -63,6 +59,15 @@ interface ImportStatus {
   indicatorFilling: boolean;
   currentlyFillingTimeframe: string | null;
   currentlyFillingIndicator: string | null;
+}
+
+interface Candlestick {
+  timestamp: number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
 }
 
 const props = defineProps({
@@ -150,6 +155,7 @@ function updateChartTheme(isDark: boolean) {
       layout: {
         background: {type: ColorType.Solid, color: isDark ? '#1e1e1e' : '#ffffff'},
         textColor: isDark ? '#d1d4dc' : 'rgba(33, 56, 77, 1)',
+        attributionLogo: false,
       },
       grid: {
         vertLines: {color: isDark ? '#2B2B43' : 'rgba(197, 203, 206, 0.5)'},
@@ -195,6 +201,9 @@ function parseTimeToMilliseconds(timeString: string): number {
 }
 
 onMounted(() => {
+  chartDataProvider.fetchChartData();
+  chartDataProvider.fetchImportStatus();
+  setInterval(() => chartDataProvider.fetchImportStatus(), 5000);
   if (chartContainer.value) {
     chart = createChart(chartContainer.value, {
       width: chartContainer.value.clientWidth,
@@ -214,19 +223,18 @@ onMounted(() => {
 });
 
 const formattedData = computed(() => {
-  return props.data
+  const candlesticks: Candlestick[] = chartStore.chartData;
+
+  return candlesticks
       .slice()
       .sort((a, b) => a.timestamp - b.timestamp)
-      .map(item => {
-        const candlestickDate: CandlestickData = {
-          time: item.timestamp / 1000 as Time,
-          open: item.open,
-          high: item.high,
-          low: item.low,
-          close: item.close
-        };
-        return candlestickDate;
-      });
+      .map(item => ({
+        time: item.timestamp / 1000 as Time,
+        open: item.open,
+        high: item.high,
+        low: item.low,
+        close: item.close
+      }));
 });
 
 watch(() => formattedData.value, updateChartData, {deep: true});

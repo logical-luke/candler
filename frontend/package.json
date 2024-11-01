@@ -15,12 +15,14 @@
     "axios": "^1.4.0",
     "chart.js": "^4.4.6",
     "lightweight-charts": "^4.2.1",
+    "pinia": "^2.2.5",
     "primeicons": "^7.0.0",
     "primevue": "^4.2.0",
     "tailwindcss-primeui": "^0.3.4",
     "vue": "^3.3.4"
   },
   "devDependencies": {
+    "@types/node": "^22.8.6",
     "@vitejs/plugin-vue": "^5.0.0",
     "@vue/eslint-config-prettier": "^9.0.0",
     "@vue/eslint-config-typescript": "^12.0.0",

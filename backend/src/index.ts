@@ -107,7 +107,7 @@ const start = async () => {
     console.log('Initializing database...');
     await initDatabase();
     console.log('Database initialized. Starting continuous updates...');
-    continuousUpdate();
+    await continuousUpdate();
     console.log('Server is ready.');
 
     console.log('Routes:');
